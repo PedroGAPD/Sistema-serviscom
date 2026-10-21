@@ -9,8 +9,9 @@
         fieldset { margin-bottom: 20px; border: 1px solid #ccc; border-radius: 5px; }
         legend { font-weight: bold; color: #333; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        button { background: #0056b3; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button { background: #0056b3; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; }
         button:hover { background: #004494; }
+        #resultado { margin-top: 20px; padding: 15px; border-radius: 5px; background-color: #eef2f5; }
     </style>
 </head>
 <body>
@@ -18,15 +19,16 @@
         <h2>Sistema Experto Serviscom</h2>
         <p>Selecciona tu sistema operativo y marca todas las casillas que describan tu situación actual.</p>
         
-        <form action="/diagnosticar" method="POST">
+         <form id="form-diagnostico">
             <fieldset>
                 <legend>Datos del Usuario</legend>
                 <label>Nombre (sin espacios): </label>
-                <input type="text" name="nombre" placeholder="ej. pedro_gonzalez" required>
+                <!-- Corrección: Se agregó id="nombre" -->
+                <input type="text" id="nombre" name="nombre" placeholder="ej. pedro_gonzalez" required>
             </fieldset>
 
             <fieldset>
-                <legend>Sistemas Operativos (Puedes elegir varios si tienes Dual-Boot)</legend>
+                <legend>Sistemas Operativos</legend>
                 <input type="checkbox" name="sistemas" value="windows"> Windows<br>
                 <input type="checkbox" name="sistemas" value="macos"> macOS<br>
                 <input type="checkbox" name="sistemas" value="linux"> Linux<br>
@@ -93,6 +95,56 @@
 
             <button type="submit">Ejecutar Diagnóstico</button>
         </form>
+
+        <!-- Corrección: Se agregó el div donde se pintará el resultado -->
+        <div id="resultado"></div>
     </div>
+
+    <script>
+    // Corrección: El ID coincide con "form-diagnostico"
+    document.getElementById('form-diagnostico').addEventListener('submit', async function(e) {
+        e.preventDefault(); 
+
+        const nombre = document.getElementById('nombre').value;
+        const sistemas = Array.from(document.querySelectorAll('input[name="sistemas"]:checked')).map(el => el.value);
+        const problemas = Array.from(document.querySelectorAll('input[name="problemas"]:checked')).map(el => el.value);
+
+        const datosEnvio = {
+            nombre: nombre,
+            sistemas: sistemas,
+            problemas: problemas
+        };
+
+        try {
+            const respuesta = await fetch('/api/diagnosticar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datosEnvio)
+            });
+
+            const resultadoJson = await respuesta.json();
+            
+            let contenedor = document.getElementById('resultado');
+            contenedor.innerHTML = `<h3 style="color: #2c3e50; border-bottom: 2px solid #ccc; padding-bottom: 5px;">Diagnóstico de Prolog para: ${resultadoJson.usuario}</h3>`;
+            
+            resultadoJson.diagnosticos.forEach(diag => {
+                contenedor.innerHTML += `
+                    <div style="background: white; border-left: 4px solid #3498db; padding: 15px; margin-top: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <p style="margin: 0 0 10px 0;"><strong>⚠️ Problema:</strong> <span style="text-transform: capitalize;">${diag.problema.replace(/_/g, ' ')}</span></p>
+                        <p style="margin: 0 0 10px 0;"><strong>💡 Solución:</strong> ${diag.solucion ? diag.solucion.replace(/_/g, ' ') : 'Requiere revisión especializada'}</p>
+                        <p style="margin: 0 0 10px 0;"><strong>⚙️ Complejidad:</strong> <span style="text-transform: capitalize;">${diag.complejidad}</span></p>
+                        <p style="margin: 0;"><strong>📝 Veredicto lógico:</strong> ${diag.motivos.join(', ')}</p>
+                    </div>
+                `;
+            });
+
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Hubo un error al procesar el diagnóstico.');
+        }
+    });
+    </script>
 </body>
 </html>

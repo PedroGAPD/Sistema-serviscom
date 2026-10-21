@@ -1,100 +1,111 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from pyswip import Prolog
 
 app = Flask(__name__)
 prolog = Prolog()
-# Cargamos tu archivo oficial
+# Cargamos tu archivo oficial de Prolog
 prolog.consult("serviscom.pl")
 
 @app.route('/')
 def inicio():
+    # Mantenemos una vista web sencilla para probar la interfaz visual si se desea
     return render_template('index.html')
 
-@app.route('/diagnosticar', methods=['POST'])
-def diagnosticar():
-    usuario = request.form['nombre'].lower()
-    sistemas = request.form.getlist('sistemas')
-    problemas = request.form.getlist('problemas')
+@app.route('/api/diagnosticar', methods=['POST'])
+def api_diagnosticar():
+    # Recibimos los datos en formato JSON (o de un formulario tradicional si se prefiere)
+    data = request.get_json() if request.is_json else request.form
     
+    usuario = data.get('nombre', 'invitado').lower()
+    sistemas = data.get('sistemas', [])
+    problemas = data.get('problemas', [])
+    
+    # Si vienen como string separado por comas o listas desde un form
+    if isinstance(sistemas, str):
+        sistemas = [s.strip() for s in sistemas.split(',') if s.strip()]
+    if isinstance(problemas, str):
+        problemas = [p.strip() for p in problemas.split(',') if p.strip()]
+
     num_problemas = len(problemas)
     num_peligro = 0
     
-    # 1. Dejar que Prolog cuente los peligros
+    # 1. Contar los peligros con Prolog
     for p in problemas:
         if list(prolog.query(f"peligro({p})")):
             num_peligro += 1
 
-    # 2. Inyectar el entorno para Prolog (El sistema combinado)
+    # 2. Inyectar el entorno para Prolog (Sistemas combinados)
     list(prolog.query(f"retractall(tiene_sistema({usuario}, _))"))
     for s in sistemas:
         prolog.assertz(f"tiene_sistema({usuario}, {s})")
 
-    diagnosticos = []
+    diagnosticos_lista = []
 
-    # 3. Extraer el diagnóstico profundo de Prolog
+    # 3. Procesar cada problema mediante la inferencia lógica de Prolog
     for problema in problemas:
-        detalle_html = f"<strong>Reporte para '{problema.replace('_', ' ')}':</strong><ul>"
+        detalle_problema = {
+            "problema": problema,
+            "estado_critico": False,
+            "solucion": None,
+            "complejidad": "normal",
+            "causa_probable": None,
+            "hardware": False,
+            "veredicto_reparacion": False,
+            "motivos": []
+        }
         
-        # A) Evaluar si hay solución o si el equipo está perdido
-        # Pasamos los números reales para que Prolog evalúe sus reglas matemáticas
-        es_sin_solucion = list(prolog.query(f"sin_solucion({problema}, {num_peligro}, {num_problemas})"))
-        if es_sin_solucion:
-            detalle_html += "<li>❌ <b>Estado Crítico:</b> El sistema no tiene solución. "
-            if num_peligro > 5 or num_problemas > 5:
-                detalle_html += "Prolog determinó que excediste el límite de daños lógicos soportados."
-            else:
-                detalle_html += "Prolog determinó que es un daño físico catastrófico."
-            detalle_html += " Se recomienda comprar equipo nuevo.</li></ul><hr>"
-            diagnosticos.append(detalle_html)
-            continue # Si ya está quemado, no evaluamos más
+        # A) Evaluar si no tiene solución (crítico)
+        if list(prolog.query(f"sin_solucion({problema}, {num_peligro}, {num_problemas})")):
+            detalle_problema["estado_critico"] = True
+            detalle_problema["motivos"].append("El sistema determinó que es un daño catastrófico o se excedió el límite de fallas.")
+            diagnosticos_lista.append(detalle_problema)
+            continue
 
         # B) Extraer la solución general mediante backtracking
         solucion_query = list(prolog.query(f"solucion_general(Solucion, {problema})"))
         if solucion_query:
-            solucion = solucion_query[0]["Solucion"]
-            detalle_html += f"<li>✅ <b>Solución técnica encontrada:</b> Debes {solucion.replace('_', ' ')}.</li>"
+            detalle_problema["solucion"] = solucion_query[0]["Solucion"]
             
-            # C) Prolog evalúa la naturaleza de la solución (Trivial vs Grave)
-            if list(prolog.query(f"problema_trivial({solucion}, {problema})")):
-                detalle_html += "<li>🟢 <b>Complejidad:</b> Es un problema trivial, puedes resolverlo tú mismo.</li>"
-                
-            if list(prolog.query(f"problema_grave({solucion}, {problema})")):
-                detalle_html += "<li>🔴 <b>Complejidad:</b> Prolog lo clasifica como un PROBLEMA GRAVE.</li>"
+            # C) Evaluar complejidad (trivial vs grave)
+            if list(prolog.query(f"problema_trivial({detalle_problema['solucion']}, {problema})")):
+                detalle_problema["complejidad"] = "trivial"
+            elif list(prolog.query(f"problema_grave({detalle_problema['solucion']}, {problema})")):
+                detalle_problema["complejidad"] = "grave"
         
-        # D) Prolog evalúa riesgos colaterales (Virus)
+        # D) Evaluar riesgos (Virus)
         if list(prolog.query(f"posible_virus(_, {problema})")):
-            detalle_html += "<li>🦠 <b>Causa probable:</b> Esto se debe a un posible VIRUS o comportamiento inseguro.</li>"
+            detalle_problema["causa_probable"] = "posible_virus"
 
-        # E) Prolog evalúa daños de hardware (Piezas)
+        # E) Evaluar si requiere cambio de pieza
         if list(prolog.query(f"cambiar_pieza({problema})")):
-            detalle_html += "<li>🔧 <b>Hardware:</b> Es una pieza rota, la solución es reemplazarla por una nueva.</li>"
+            detalle_problema["hardware"] = True
 
-        # F) Veredicto final de acción (Usando la regla unificada)
-        es_reparacion = list(prolog.query(f"llevala_a_reparar({problema}, {num_problemas})"))
-        if es_reparacion:
-            detalle_html += "<li>🚨 <b>Veredicto del Sistema:</b> LLÉVALA A REPARAR INMEDIATAMENTE. "
+        # F) Veredicto final de reparación
+        if list(prolog.query(f"llevala_a_reparar({problema}, {num_problemas})")):
+            detalle_problema["veredicto_reparacion"] = True
             if list(prolog.query(f"peligro({problema})")):
-                detalle_html += "(Motivo: Representa un peligro inminente para la computadora).</li>"
+                detalle_problema["motivos"].append("Representa un peligro inminente para el equipo.")
             elif list(prolog.query(f"problema_grave(_, {problema})")):
-                detalle_html += "(Motivo: La gravedad técnica es muy alta).</li>"
+                detalle_problema["motivos"].append("La gravedad técnica es muy alta.")
             else:
-                detalle_html += f"(Motivo: Acumulación de fallas. Tienes {num_problemas} problemas en total).</li>"
+                detalle_problema["motivos"].append(f"Acumulación de fallas ({num_problemas} problemas en total).")
         else:
-            detalle_html += "<li>ℹ️ <b>Veredicto del Sistema:</b> Puedes aplicar la solución en casa, no requiere técnico por ahora.</li>"
+            detalle_problema["motivos"].append("Puede resolverse en casa sin técnico.")
 
-        detalle_html += "</ul><hr>"
-        diagnosticos.append(detalle_html)
+        diagnosticos_lista.append(detalle_problema)
 
-    # Limpieza final
+    # Limpieza final en la base de conocimientos de Prolog
     list(prolog.query(f"retractall(tiene_sistema({usuario}, _))"))
 
-    # Render simple para ver el resultado
-    html_respuesta = f"<h2>Diagnóstico Experto para: {usuario.capitalize()}</h2>"
-    for d in diagnosticos:
-        html_respuesta += d
-    html_respuesta += "<br><a href='/'>Hacer otro diagnóstico</a>"
-    
-    return html_respuesta
+    # Estructura final del JSON de respuesta
+    respuesta_json = {
+        "usuario": usuario,
+        "total_problemas": num_problemas,
+        "total_peligros": num_peligro,
+        "diagnosticos": diagnosticos_lista
+    }
+
+    return jsonify(respuesta_json)
 
 if __name__ == '__main__':
     app.run(debug=True)
