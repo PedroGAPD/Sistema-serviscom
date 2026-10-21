@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Serviscom - Diagnóstico Experto</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+        .contenedor { background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
+        fieldset { margin-bottom: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        legend { font-weight: bold; color: #333; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { background: #0056b3; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #004494; }
+    </style>
+</head>
+<body>
+    <div class="contenedor">
+        <h2>Sistema Experto Serviscom</h2>
+        <p>Selecciona tu sistema operativo y marca todas las casillas que describan tu situación actual.</p>
+        
+        <form action="/diagnosticar" method="POST">
+            <fieldset>
+                <legend>Datos del Usuario</legend>
+                <label>Nombre (sin espacios): </label>
+                <input type="text" name="nombre" placeholder="ej. pedro_gonzalez" required>
+            </fieldset>
+
+            <fieldset>
+                <legend>Sistemas Operativos (Puedes elegir varios si tienes Dual-Boot)</legend>
+                <input type="checkbox" name="sistemas" value="windows"> Windows<br>
+                <input type="checkbox" name="sistemas" value="macos"> macOS<br>
+                <input type="checkbox" name="sistemas" value="linux"> Linux<br>
+            </fieldset>
+
+            <fieldset>
+                <legend>Problemas de Software y Rendimiento</legend>
+                <div class="grid">
+                    <label><input type="checkbox" name="problemas" value="poca_memoria"> Poca memoria</label>
+                    <label><input type="checkbox" name="problemas" value="error_de_instalacion"> Error de instalación</label>
+                    <label><input type="checkbox" name="problemas" value="disco_lleno"> Disco lleno</label>
+                    <label><input type="checkbox" name="problemas" value="sistema_lento"> Sistema lento</label>
+                    <label><input type="checkbox" name="problemas" value="pantalla_azul"> Pantalla azul</label>
+                    <label><input type="checkbox" name="problemas" value="no_inicia_sistema"> No inicia el sistema</label>
+                    <label><input type="checkbox" name="problemas" value="enciende_pero_no_muestra_imagen"> Enciende pero no da imagen</label>
+                    <label><input type="checkbox" name="problemas" value="elementos_no_guardados"> Elementos no guardados</label>
+                    <label><input type="checkbox" name="problemas" value="sin_internet"> Sin internet</label>
+                    <label><input type="checkbox" name="problemas" value="pitidos_sin_video"> Pitidos sin video</label>
+                    <label><input type="checkbox" name="problemas" value="linux_lento"> Linux lento</label>
+                    <label><input type="checkbox" name="problemas" value="no_inicia_linux"> No inicia Linux</label>
+                    <label><input type="checkbox" name="problemas" value="servicio_caido"> Servicio caído</label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Daños Físicos y Piezas Rotas</legend>
+                <div class="grid">
+                    <label><input type="checkbox" name="problemas" value="faltan_teclas"> Faltan teclas</label>
+                    <label><input type="checkbox" name="problemas" value="pantalla_estrellada"> Pantalla estrellada</label>
+                    <label><input type="checkbox" name="problemas" value="bisagra_rota"> Bisagra rota</label>
+                    <label><input type="checkbox" name="problemas" value="cargador_en_mal_estado"> Cargador en mal estado</label>
+                    <label><input type="checkbox" name="problemas" value="fuente_quemada"> Fuente quemada</label>
+                    <label><input type="checkbox" name="problemas" value="pasta_termica_sobrecalentada"> Pasta térmica sobrecalentada</label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Peligros y Virus</legend>
+                <div class="grid">
+                    <label><input type="checkbox" name="problemas" value="equipo_con_virus"> Equipo con virus detectado</label>
+                    <label><input type="checkbox" name="problemas" value="equipo_totalmente_sobrecalentado"> Sobrecalentamiento extremo</label>
+                    <label><input type="checkbox" name="problemas" value="equipo_sigue_sin_encender"> Sigue sin encender tras intentos</label>
+                    <label><input type="checkbox" name="problemas" value="equipo_hackeado"> Equipo hackeado</label>
+                    <label><input type="checkbox" name="problemas" value="no_reconoce_puertos"> No reconoce puertos USB</label>
+                    <label><input type="checkbox" name="problemas" value="se_apaga_constantemente"> Se apaga constantemente</label>
+                    <label><input type="checkbox" name="problemas" value="instalacion_insegura_de_aplicacion"> Instaló app insegura</label>
+                    <label><input type="checkbox" name="problemas" value="mal_funcionamiento_antivirus"> Antivirus no funciona</label>
+                    <label><input type="checkbox" name="problemas" value="abrir_enlaces_desconocidos"> Abrió enlaces desconocidos</label>
+                    <label><input type="checkbox" name="problemas" value="sobrecarga_de_recursos"> Sobrecarga de recursos</label>
+                    <label><input type="checkbox" name="problemas" value="usb_de_dudosa_procedencia"> Usó USB de dudosa procedencia</label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Daños Críticos (Sin solución aparente)</legend>
+                <div class="grid">
+                    <label><input type="checkbox" name="problemas" value="perdida_de_documentos_o_archivos"> Pérdida masiva de archivos</label>
+                    <label><input type="checkbox" name="problemas" value="liquido_derramado"> Líquido derramado</label>
+                    <label><input type="checkbox" name="problemas" value="corrosion_dentro_del_equipo"> Corrosión interna</label>
+                    <label><input type="checkbox" name="problemas" value="equipo_quemado"> Equipo quemado (humo/olor)</label>
+                    <label><input type="checkbox" name="problemas" value="placa_madre_dañada"> Placa madre dañada</label>
+                </div>
+            </fieldset>
+
+            <button type="submit">Ejecutar Diagnóstico</button>
+        </form>
+    </div>
+</body>
+</html>
